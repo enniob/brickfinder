@@ -154,6 +154,16 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+### Fix Nginx permissions
+
+Nginx runs as `www-data` and needs execute permission on your home directory to traverse it:
+
+```bash
+chmod o+x /home/<username>
+```
+
+> Without this, Nginx will log `Permission denied` and serve a blank page even though the files exist.
+
 ---
 
 ## 6. Auto-start with systemd
