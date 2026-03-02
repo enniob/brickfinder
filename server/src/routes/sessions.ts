@@ -4,10 +4,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { sessionStore, setCache } from '../db';
 import { getSetName, getSetParts } from '../services/rebrickable';
 import { identifyParts } from '../services/vision';
-import { Part, FoundPart, Session } from '../types';
+import { Part, FoundPart, Session, ScanDetection } from '../types';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Normalize part IDs: strip trailing letter suffix so "3069" matches "3069b"
+function normId(id: string) {
+  return id.replace(/[a-z]+$/i, '').toLowerCase();
+}
+function findByPartNum<T extends { partNum: string }>(list: T[], id: string): T | undefined {
+  return list.find((p) => p.partNum === id || normId(p.partNum) === normId(id));
+}
 
 // POST /api/sessions — create a new session for a set
 router.post('/', async (req: Request, res: Response) => {
@@ -21,7 +29,6 @@ router.post('/', async (req: Request, res: Response) => {
   const setNum = /^[\w-]+-\d+$/.test(raw) ? raw : `${raw}-1`;
 
   try {
-    // Use cached parts if available
     let cached = setCache.get(setNum);
     if (!cached) {
       const [setName, parts] = await Promise.all([getSetName(setNum), getSetParts(setNum)]);
@@ -76,71 +83,108 @@ router.get('/:id', (req: Request, res: Response) => {
   res.json(session);
 });
 
-// POST /api/sessions/:id/scan — upload photo and identify parts
+// POST /api/sessions/:id/scan — detect only, does NOT update session
 router.post('/:id/scan', upload.single('image'), async (req: Request, res: Response) => {
   const session = sessionStore.get(req.params.id as string);
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
     return;
   }
-
   if (!req.file) {
     res.status(400).json({ error: 'image file is required' });
     return;
   }
 
-  const mimeType = req.file.mimetype as 'image/jpeg' | 'image/png' | 'image/webp';
-  const imageBase64 = req.file.buffer.toString('base64');
-
   try {
-    const identified = await identifyParts(imageBase64, mimeType, session.missingParts);
+    const detection = await identifyParts(req.file.buffer, req.file.mimetype);
 
-    // Merge newly identified parts into foundParts (additive)
-    const foundMap = new Map<string, FoundPart>(
-      session.foundParts.map((p) => [`${p.partNum}-${p.colorId}`, p])
-    );
+    let scanDetection: ScanDetection | null = null;
+    if (detection) {
+      const partInfo = findByPartNum(session.setParts, detection.partNum);
+      const inMissingList = !!findByPartNum(session.missingParts, detection.partNum);
+      const canonicalPartNum = partInfo?.partNum ?? detection.partNum;
+      console.log(`[scan] detection=${detection.partNum} → canonical=${canonicalPartNum} inMissingList=${inMissingList} bbox=${JSON.stringify(detection.boundingBox)}`);
 
-    for (const { partNum, quantity } of identified) {
-      const required = session.setParts.find((p) => p.partNum === partNum);
-      if (!required) continue;
-
-      const key = `${partNum}-${required.colorId}`;
-      const existing = foundMap.get(key);
-      if (existing) {
-        // Don't exceed required quantity
-        existing.foundQuantity = Math.min(
-          existing.foundQuantity + quantity,
-          required.quantity
-        );
-      } else {
-        foundMap.set(key, {
-          ...required,
-          foundQuantity: Math.min(quantity, required.quantity),
-        });
-      }
+      scanDetection = {
+        partNum: canonicalPartNum,
+        partName: partInfo?.name ?? detection.partNum,
+        score: detection.score,
+        inMissingList,
+        boundingBox: detection.boundingBox,
+      };
     }
 
-    session.foundParts = Array.from(foundMap.values());
-
-    // Rebuild missing parts
-    const foundNums = new Set(session.foundParts.map((p) => p.partNum));
-    session.missingParts = session.setParts.filter((p) => {
-      const found = session.foundParts.find((f) => f.partNum === p.partNum);
-      if (!found) return true;
-      return found.foundQuantity < p.quantity;
-    });
-
-    session.lastScannedAt = new Date();
-    sessionStore.set(session);
-
-    res.json({
-      session,
-      newlyFound: identified.length,
-    });
+    res.json({ detection: scanDetection });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    res.status(500).json({ error: `Vision scan failed: ${message}` });
+    res.status(500).json({ error: `Scan failed: ${message}` });
   }
+});
+
+// POST /api/sessions/:id/mark-found — confirm a detected part as found
+router.post('/:id/mark-found', async (req: Request, res: Response) => {
+  const session = sessionStore.get(req.params.id as string);
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  const { partNum } = req.body as { partNum?: string };
+  if (!partNum) {
+    res.status(400).json({ error: 'partNum is required' });
+    return;
+  }
+
+  const part = findByPartNum(session.setParts, partNum);
+  console.log(`[mark-found] partNum=${partNum} → ${part?.partNum ?? 'NOT FOUND'} in set ${session.setNum}`);
+  if (!part) {
+    res.status(404).json({ error: `Part ${partNum} not in set` });
+    return;
+  }
+
+  const foundMap = new Map<string, FoundPart>(
+    session.foundParts.map((p) => [`${p.partNum}-${p.colorId}`, p])
+  );
+  const key = `${part.partNum}-${part.colorId}`;
+  const existing = foundMap.get(key);
+  let newlyFound = 0;
+
+  if (existing) {
+    existing.foundQuantity = Math.min(existing.foundQuantity + 1, part.quantity);
+  } else {
+    foundMap.set(key, { ...part, foundQuantity: 1 });
+    newlyFound = 1;
+  }
+
+  session.foundParts = Array.from(foundMap.values());
+  session.missingParts = session.setParts.filter((p) => {
+    const found = session.foundParts.find((f) => f.partNum === p.partNum);
+    return !found || found.foundQuantity < p.quantity;
+  });
+  session.lastScannedAt = new Date();
+  sessionStore.set(session);
+
+  console.log(`[mark-found] saved — foundParts: ${session.foundParts.length}, missingParts: ${session.missingParts.length}`);
+  res.json({ session, newlyFound });
+});
+
+// DELETE /api/sessions/:id/found/:partNum — remove a wrongly marked part
+router.delete('/:id/found/:partNum', (req: Request, res: Response) => {
+  const session = sessionStore.get(req.params.id as string);
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  const { partNum } = req.params as { partNum: string };
+  session.foundParts = session.foundParts.filter((p) => p.partNum !== partNum);
+  session.missingParts = session.setParts.filter((p) => {
+    const found = session.foundParts.find((f) => f.partNum === p.partNum);
+    return !found || found.foundQuantity < p.quantity;
+  });
+  sessionStore.set(session);
+
+  res.json(session);
 });
 
 // DELETE /api/sessions/:id — clear session

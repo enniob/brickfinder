@@ -1,3 +1,20 @@
+export interface BoundingBox {
+  left: number;
+  upper: number;
+  right: number;
+  lower: number;
+  imageWidth: number;
+  imageHeight: number;
+}
+
+export interface ScanDetection {
+  partNum: string;
+  partName: string;
+  score: number;
+  inMissingList: boolean;
+  boundingBox: BoundingBox;
+}
+
 export interface Part {
   partNum: string;
   name: string;

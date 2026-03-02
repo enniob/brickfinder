@@ -182,6 +182,24 @@
   background: #e0e0e0;
 }
 
+.unmarkButton {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  color: #aaa;
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.unmarkButton:hover {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
 .partInfo {
   display: flex;
   flex-direction: column;
@@ -208,6 +226,249 @@
   font-size: 13px;
   color: #555;
   font-weight: 500;
+}
+
+/* Scan result panel */
+.scanResult {
+  margin: 12px 16px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.scanResultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 8px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.scanResultTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.scanDismiss {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #888;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+}
+
+.scanDismiss:hover {
+  color: #333;
+}
+
+.scanCanvas {
+  width: 100%;
+  display: block;
+}
+
+.scanResultLabel {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+  border-top: 1px solid #eee;
+}
+
+/* Detection list */
+.detectionList {
+  border-top: 1px solid #eee;
+}
+
+.detectionItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detectionItem:last-child {
+  border-bottom: none;
+}
+
+.detectionInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detectionName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detectionMeta {
+  font-size: 11px;
+  color: #888;
+}
+
+.markFoundButton {
+  background: #2ecc71;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.markFoundButton:hover {
+  opacity: 0.85;
+}
+
+.panelError {
+  font-size: 12px;
+  color: #e74c3c;
+  padding: 6px 12px;
+  margin: 0;
+  border-top: 1px solid #fde;
+  background: #fff5f5;
+}
+
+.detectionFootnote {
+  font-size: 11px;
+  color: #aaa;
+  padding: 6px 12px;
+  margin: 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Mobile card layout */
+.scanCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.scanCardCounter {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+}
+
+.scanCardSpinner {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.scanCardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 8px;
+}
+
+.scanCardInfoName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #222;
+}
+
+.scanCardInfoMeta {
+  font-size: 13px;
+  color: #888;
+}
+
+.scanCardCanvas {
+  width: 100%;
+  display: block;
+}
+
+.scanCardError {
+  font-size: 13px;
+  color: #e74c3c;
+  padding: 6px 14px;
+  margin: 0;
+  background: #fff5f5;
+  border-top: 1px solid #fde;
+}
+
+.scanCardActions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid #eee;
+}
+
+.skipButton {
+  flex: 1;
+  background: #f0f0f0;
+  color: #555;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.skipButton:hover {
+  background: #e0e0e0;
+}
+
+.markLargeButton {
+  flex: 2;
+  background: #2ecc71;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s;
+}
+
+.markLargeButton:hover {
+  opacity: 0.85;
+}
+
+.markLargeButton:disabled,
+.skipButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.scanCardDone {
+  padding: 20px 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #27ae60;
+  text-align: center;
+}
+
+.markedBadge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #27ae60;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Scan message */
