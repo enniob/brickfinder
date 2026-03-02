@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**LegoFinder** — A mobile app that helps users identify which Lego pieces they already own and which are still missing to complete a specific set. The user enters a Lego set number, photographs their pile of pieces, and the app tracks found vs. missing parts across multiple scans.
+**LegoFinder** — A mobile app that helps users identify which Lego pieces they already own and which are still missing to complete a specific set. The user enters a Lego set number, photographs individual pieces one at a time, confirms detections, and the app tracks found vs. missing parts.
 
 ## Monorepo Structure
 
@@ -12,18 +12,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 legoFinder/
 ├── app/          # React + Vite frontend
 ├── server/       # Node.js + Express backend
-└── CLAUDE.md
+├── CLAUDE.md
+├── README.md
+└── RASPBERRY_PI_SETUP.md
 ```
 
 ## Tech Stack
 
-| Layer       | Technology                              |
-|-------------|----------------------------------------|
+| Layer       | Technology                               |
+|-------------|------------------------------------------|
 | Frontend    | React 19 + Vite, TypeScript, CSS Modules |
-| Backend     | Node.js, Express, TypeScript           |
+| Backend     | Node.js, Express, TypeScript             |
 | Storage     | SQLite (`better-sqlite3`) via `server/src/db.ts` |
-| Vision AI   | Anthropic Claude SDK (claude-sonnet-4-6) |
-| Lego Data   | Rebrickable REST API                   |
+| Vision AI   | Brickognize API (no key required)        |
+| Lego Data   | Rebrickable REST API                     |
 
 ## Development Commands
 
@@ -50,45 +52,51 @@ npm test
 ## Architecture & Data Flow
 
 ### Core User Flow
-1. User enters a Lego set number → app calls `POST /api/sessions` → server fetches the set's parts list from Rebrickable API and creates an in-memory session.
-2. User photographs their Lego pieces → app uploads the image to `POST /api/sessions/:id/scan`.
-3. Server sends the image + required parts list to Claude Vision, asking it to identify which parts are visible.
-4. Server compares identified pieces against the set's parts list, updates the session's `foundParts` and `missingParts`, and returns the updated state.
-5. Multiple scans are **additive** — each scan adds newly found pieces without losing progress from earlier photos.
-6. App displays progress: found / total, with a list of still-missing pieces (with images from Rebrickable).
+1. User types a set number → debounced `GET /api/sets/:setNum` shows a live preview (name + image) before committing.
+2. User confirms → `POST /api/sessions` fetches the full parts list from Rebrickable and creates a session.
+3. User photographs a piece → app normalises the image (EXIF rotation, max 1024 px), tiles it into a 2×2 grid, and sends each tile to `POST /api/sessions/:id/scan` in parallel.
+4. Server calls the Brickognize API for each tile, returns the top detection (part number, confidence, bounding box). Does **not** update the session.
+5. Frontend deduplicates overlapping detections across tiles (IoU threshold 0.3) and shows them one at a time in a card UI with a cropped preview.
+6. User taps **Mark Found** → `POST /api/sessions/:id/mark-found` updates `foundParts`/`missingParts`.
+7. User can undo via **✕** on a found part → `DELETE /api/sessions/:id/found/:partNum`.
 
-### In-Memory Session Shape
+### Session Shape
 ```typescript
 interface Session {
   id: string;
   setNum: string;
   setName: string;
-  setParts: Part[];          // full list from Rebrickable
-  foundParts: FoundPart[];   // accumulated across all scans
-  missingParts: Part[];      // setParts not yet found
+  setImgUrl: string | null;   // set box image from Rebrickable
+  setParts: Part[];           // full list from Rebrickable
+  foundParts: FoundPart[];    // confirmed by the user
+  missingParts: Part[];       // setParts not yet confirmed
   createdAt: Date;
+  lastScannedAt: Date | null;
 }
 ```
 
 ### Backend Key Concepts
-- **Sessions** are persisted in SQLite (`server/data/legofinder.db`) via `server/src/db.ts`. The DB file is created automatically on first run.
-- **Rebrickable parts cache** — set parts fetched once per set number and stored in the `set_cache` table; reused across sessions for the same set number.
-- **Vision prompt** — the prompt sent to Claude must include part numbers, names, colors, and ideally image URLs from Rebrickable so the model has visual reference to compare against the user's photo.
+- **Sessions** are persisted in SQLite (`server/data/legofinder.db`) via `server/src/db.ts`. Created automatically on first run; delete the file to reset.
+- **Set cache** (`set_cache` table) — set name, image URL, and parts list are fetched once per set number and reused across sessions.
+- **Part number normalisation** — Brickognize returns `3069`, Rebrickable stores `3069b`. Both sides strip trailing letter suffixes before comparing (`normId`).
+- **Image tiling** — frontend splits each photo into a 2×2 grid. Each tile is scanned independently; bounding boxes are mapped back to full-image coordinates before deduplication.
 
 ### API Routes
 ```
-GET    /api/sessions              List all sessions (sorted by last scanned)
-POST   /api/sessions              Create session: { setNum } → fetches parts, returns session
-GET    /api/sessions/:id          Get full session state (found/missing/progress)
-POST   /api/sessions/:id/scan     Body: multipart image → runs Claude vision, returns updated session
-DELETE /api/sessions/:id          Clear session
+GET    /api/sets/:setNum              Lightweight set lookup: name + image (no parts)
+GET    /api/sessions                  List all sessions (sorted by last scanned)
+POST   /api/sessions                  Create session: { setNum } → fetches parts, returns session
+GET    /api/sessions/:id              Get full session state
+POST   /api/sessions/:id/scan         Body: multipart image → returns { detection } (detect only, no state change)
+POST   /api/sessions/:id/mark-found   Body: { partNum } → confirms detection, updates session
+DELETE /api/sessions/:id/found/:partNum  Unmark a wrongly confirmed part
+DELETE /api/sessions/:id              Delete session
 ```
 
 ## Environment Variables
 
 **server/.env**
 ```
-ANTHROPIC_API_KEY=...
 REBRICKABLE_API_KEY=...
 PORT=3000
 ```
@@ -97,19 +105,36 @@ PORT=3000
 ```
 VITE_API_URL=http://localhost:3000
 ```
-Note: when testing on a physical phone, change `VITE_API_URL` to your machine's LAN IP (e.g. `http://192.168.1.x:3000`).
+Note: when testing on a physical phone or Pi, change `VITE_API_URL` to the machine's LAN IP (e.g. `http://192.168.1.x:3000`).
 
 ## External APIs
 
 ### Rebrickable
 - Base URL: `https://rebrickable.com/api/v3/lego/`
 - Auth: `Authorization: key <REBRICKABLE_API_KEY>` header
-- Key endpoints:
-  - `GET /sets/{set_num}/parts/?page_size=1000` — all parts for a set
-  - `GET /parts/{part_num}/` — part detail + image
-- Set numbers include the variant suffix, e.g. `75192-1` for the Millennium Falcon.
+- Key endpoints used:
+  - `GET /sets/{set_num}/` — set name and `set_img_url`
+  - `GET /sets/{set_num}/parts/?page_size=500` — paginated parts list
+- Set numbers include the variant suffix, e.g. `75192-1`. The server auto-appends `-1` if omitted.
 
-### Claude Vision
-- Model: `claude-sonnet-4-6`
-- Pass the user's photo as a `base64` image block alongside a text prompt listing required parts.
-- Ask the model to return a **JSON array** of identified `{ partNum, quantity }` objects so results can be parsed reliably.
+### Brickognize
+- Endpoint: `POST https://api.brickognize.com/predict/parts/`
+- Auth: none required
+- Input: `multipart/form-data` with a `query_image` field
+- Returns: top-1 part prediction with part ID, confidence score, and bounding box
+- Implemented in `server/src/services/vision.ts`
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/services/vision.ts` | Brickognize API integration |
+| `server/src/services/rebrickable.ts` | Rebrickable API client |
+| `server/src/routes/sessions.ts` | Session CRUD + scan + mark-found + unmark |
+| `server/src/routes/sets.ts` | Lightweight set lookup endpoint |
+| `server/src/db.ts` | SQLite session store + set cache |
+| `server/src/types.ts` | Shared server-side types |
+| `app/src/pages/Session.tsx` | Session page + image pipeline + ScanResultPanel |
+| `app/src/pages/Home.tsx` | Home page with debounced set search |
+| `app/src/services/api.ts` | Frontend API client |
+| `app/src/types.ts` | Shared frontend types |
