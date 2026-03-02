@@ -12,6 +12,12 @@ LegoFinder helps you figure out which Lego pieces you already own and which ones
 
 Each scan detects a single piece and waits for your confirmation, keeping you in control of what gets marked.
 
+## Screenshots
+
+| Home | Missing parts |
+|------|--------------|
+| ![Home screen showing set list](demo/Screenshot%202026-03-02%20160022.png) | ![Session screen showing missing parts](demo/Screenshot%202026-03-02%20160036.png) |
+
 ## Tech stack
 
 | Layer      | Technology                                     |
