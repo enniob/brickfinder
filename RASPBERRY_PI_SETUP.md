@@ -12,10 +12,10 @@ This guide covers running the full LegoFinder stack (backend + frontend) on a Ra
 
 Flash Raspberry Pi OS to your SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/). In the imager settings, enable SSH and set your username/password before flashing.
 
-SSH into the Pi:
+SSH into the Pi (replace `<username>` with the username you set in the imager):
 
 ```bash
-ssh pi@<pi-ip-address>
+ssh <username>@<pi-ip-address>
 ```
 
 Update the system:
@@ -123,8 +123,8 @@ server {
     listen 80;
     server_name <pi-ip-address>;
 
-    # Serve the React frontend
-    root /home/pi/legoFinder/app/dist;
+    # Serve the React frontend — replace <username> with your Pi username
+    root /home/<username>/legoFinder/app/dist;
     index index.html;
 
     # SPA fallback — all unknown routes serve index.html
@@ -164,6 +164,8 @@ Create a systemd service for the backend:
 sudo nano /etc/systemd/system/legofinder.service
 ```
 
+Replace `<username>` with your Pi username (e.g. `ennio`):
+
 ```ini
 [Unit]
 Description=LegoFinder API Server
@@ -171,8 +173,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/legoFinder/server
+User=<username>
+WorkingDirectory=/home/<username>/legoFinder/server
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=5
