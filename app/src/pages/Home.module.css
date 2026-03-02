@@ -1,0 +1,187 @@
+.page {
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #fff;
+  padding-bottom: 32px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #E3000B;
+  color: #fff;
+  padding: 20px 20px 16px;
+}
+
+.logo {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.subtitle {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+/* Sections */
+.section {
+  padding: 20px 16px 0;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+/* New set form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input {
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  padding: 13px 14px;
+  font-size: 16px;
+  color: #222;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: #E3000B;
+  background: #fff;
+}
+
+.error {
+  font-size: 13px;
+  color: #E3000B;
+  background: #fff0f0;
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+
+.button {
+  background: #E3000B;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Sessions list */
+.sessionList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px 10px 12px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+  gap: 8px;
+}
+
+.card:hover {
+  background: #f0f0f0;
+}
+
+.cardBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  font-size: 12px;
+  color: #999;
+}
+
+.cardProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.cardBar {
+  flex: 1;
+  height: 5px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cardFill {
+  height: 100%;
+  background: #2ecc71;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.cardPct {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.deleteBtn:hover {
+  color: #E3000B;
+}
