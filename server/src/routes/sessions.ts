@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { sessionStore, setCache } from '../db';
-import { getSetName, getSetParts } from '../services/rebrickable';
+import { getSetInfo, getSetParts } from '../services/rebrickable';
 import { identifyParts } from '../services/vision';
 import { Part, FoundPart, Session, ScanDetection } from '../types';
 
@@ -31,8 +31,8 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     let cached = setCache.get(setNum);
     if (!cached) {
-      const [setName, parts] = await Promise.all([getSetName(setNum), getSetParts(setNum)]);
-      cached = { setName, parts };
+      const [{ name: setName, setImgUrl }, parts] = await Promise.all([getSetInfo(setNum), getSetParts(setNum)]);
+      cached = { setName, setImgUrl, parts };
       setCache.set(setNum, cached);
     }
 
@@ -40,6 +40,7 @@ router.post('/', async (req: Request, res: Response) => {
       id: uuidv4(),
       setNum,
       setName: cached.setName,
+      setImgUrl: cached.setImgUrl,
       setParts: cached.parts,
       foundParts: [],
       missingParts: cached.parts,

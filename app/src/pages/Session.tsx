@@ -230,6 +230,9 @@ export default function Session() {
     <div className={styles.page}>
       <header className={styles.header}>
         <button className={styles.back} onClick={() => navigate('/')}>←</button>
+        {session.setImgUrl && (
+          <img className={styles.headerSetImg} src={session.setImgUrl} alt={session.setName} />
+        )}
         <div className={styles.headerText}>
           <h1 className={styles.setName}>{session.setName}</h1>
           <span className={styles.setNum}>#{session.setNum}</span>

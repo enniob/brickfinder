@@ -23,14 +23,15 @@ interface RebrickablePartEntry {
 
 interface RebrickableSetResponse {
   name: string;
+  set_img_url: string | null;
 }
 
-export async function getSetName(setNum: string): Promise<string> {
+export async function getSetInfo(setNum: string): Promise<{ name: string; setImgUrl: string | null }> {
   const { data } = await axios.get<RebrickableSetResponse>(
     `${BASE_URL}/sets/${setNum}/`,
     { headers: getHeaders() }
   );
-  return data.name;
+  return { name: data.name, setImgUrl: data.set_img_url ?? null };
 }
 
 export async function getSetParts(setNum: string): Promise<Part[]> {

@@ -1,19 +1,57 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listSessions, createSession, deleteSession } from '../services/api';
+import { listSessions, createSession, deleteSession, lookupSet } from '../services/api';
 import { Session } from '../types';
 import styles from './Home.module.css';
+
+interface SetPreview {
+  setNum: string;
+  setName: string;
+  setImgUrl: string | null;
+}
 
 export default function Home() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [setNum, setSetNum] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState<SetPreview | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     listSessions().then(setSessions).catch(() => {});
   }, []);
+
+  // Debounced set lookup as the user types
+  useEffect(() => {
+    const trimmed = setNum.trim();
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+
+    if (!trimmed) {
+      setPreview(null);
+      setPreviewing(false);
+      return;
+    }
+
+    setPreviewing(true);
+    previewTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await lookupSet(trimmed);
+        setPreview(result);
+        setError('');
+      } catch {
+        setPreview(null);
+      } finally {
+        setPreviewing(false);
+      }
+    }, 600);
+
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
+  }, [setNum]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -23,7 +61,8 @@ export default function Home() {
     setLoading(true);
     setError('');
     try {
-      const session = await createSession(trimmed);
+      // Use the resolved set number from the preview if available
+      const session = await createSession(preview?.setNum ?? trimmed);
       navigate(`/session/${session.id}`);
     } catch (err: unknown) {
       const msg =
@@ -60,14 +99,38 @@ export default function Home() {
             type="text"
             placeholder="Set number, e.g. 75192"
             value={setNum}
-            onChange={(e) => setSetNum(e.target.value)}
+            onChange={(e) => { setSetNum(e.target.value); setError(''); }}
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
             disabled={loading}
           />
+
+          {/* Live preview */}
+          {previewing && (
+            <div className={styles.preview}>
+              <div className={styles.previewSpinner} />
+              <span className={styles.previewText}>Looking up set…</span>
+            </div>
+          )}
+          {!previewing && preview && (
+            <div className={styles.preview}>
+              {preview.setImgUrl && (
+                <img className={styles.previewImg} src={preview.setImgUrl} alt={preview.setName} />
+              )}
+              <div className={styles.previewInfo}>
+                <span className={styles.previewName}>{preview.setName}</span>
+                <span className={styles.previewNum}>#{preview.setNum}</span>
+              </div>
+            </div>
+          )}
+
           {error && <p className={styles.error}>{error}</p>}
-          <button className={styles.button} type="submit" disabled={!setNum.trim() || loading}>
+          <button
+            className={styles.button}
+            type="submit"
+            disabled={!setNum.trim() || loading || previewing || !preview}
+          >
             {loading ? 'Loading…' : 'Load Set'}
           </button>
         </form>
@@ -111,6 +174,9 @@ function SessionCard({
 
   return (
     <li className={styles.card} onClick={onOpen}>
+      {session.setImgUrl && (
+        <img className={styles.cardThumb} src={session.setImgUrl} alt={session.setName} />
+      )}
       <div className={styles.cardBody}>
         <span className={styles.cardName}>{session.setName}</span>
         <span className={styles.cardMeta}>#{session.setNum} · {lastScanned}</span>

@@ -5,6 +5,15 @@ const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
 });
 
+export async function lookupSet(
+  setNum: string
+): Promise<{ setNum: string; setName: string; setImgUrl: string | null }> {
+  const { data } = await client.get<{ setNum: string; setName: string; setImgUrl: string | null }>(
+    `/api/sets/${encodeURIComponent(setNum)}`
+  );
+  return data;
+}
+
 export async function listSessions(): Promise<Session[]> {
   const { data } = await client.get<Session[]>('/api/sessions');
   return data;

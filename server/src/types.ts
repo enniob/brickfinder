@@ -32,6 +32,7 @@ export interface Session {
   id: string;
   setNum: string;
   setName: string;
+  setImgUrl: string | null;
   setParts: Part[];
   foundParts: FoundPart[];
   missingParts: Part[];

@@ -64,6 +64,15 @@
   background: rgba(255,255,255,0.2);
 }
 
+.headerSetImg {
+  width: 52px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.15);
+}
+
 .headerText {
   display: flex;
   flex-direction: column;
