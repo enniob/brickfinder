@@ -115,6 +115,22 @@ Rebrickable identifies sets by a number and variant suffix, e.g.:
 
 You can enter just the number (e.g. `75192`) and the app will automatically try the `-1` variant. Search for sets at [rebrickable.com](https://rebrickable.com/sets/).
 
+## Deploying to a Raspberry Pi
+
+See [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md) for the full guide (Nginx reverse proxy, systemd auto-start).
+
+Once the Pi is set up, use the included update script to deploy new changes:
+
+```bash
+~/legoFinder/update.sh
+```
+
+This pulls the latest code, rebuilds the server and frontend, and restarts the `legofinder` systemd service in one step. Make it executable once after cloning:
+
+```bash
+chmod +x ~/legoFinder/update.sh
+```
+
 ## Project structure
 
 ```
@@ -134,6 +150,7 @@ legoFinder/
 │       │   └── vision.ts       # Brickognize part recognition
 │       ├── db.ts               # SQLite database (sessions + set cache)
 │       └── types.ts
+├── update.sh                   # Pi deployment helper script
 └── README.md
 ```
 
