@@ -345,7 +345,7 @@ function ScanResultPanel({
   onDismiss: () => void;
   onMarkFound: (partNum: string) => Promise<void>;
 }) {
-  const [markedParts, setMarkedParts] = useState<Record<string, boolean>>({});
+  const [markedIndices, setMarkedIndices] = useState<Set<number>>(new Set());
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const matching = detections.filter((d) => d.inMissingList);
@@ -353,7 +353,7 @@ function ScanResultPanel({
 
   // Reset marks when a new scan comes in
   useEffect(() => {
-    setMarkedParts({});
+    setMarkedIndices(new Set());
   }, [detections]);
 
   const draw = useCallback(() => {
@@ -372,14 +372,14 @@ function ScanResultPanel({
       const fontSize = Math.max(11, img.naturalWidth / 70);
       ctx.font = `bold ${fontSize}px sans-serif`;
 
-      for (const det of matching) {
+      matching.forEach((det, idx) => {
         const { left, upper, right, lower, imageWidth, imageHeight } = det.boundingBox;
         const sx = imageWidth > 0 ? img.naturalWidth / imageWidth : 1;
         const sy = imageHeight > 0 ? img.naturalHeight / imageHeight : 1;
         const x = left * sx, y = upper * sy;
         const w = (right - left) * sx, h = (lower - upper) * sy;
 
-        if (markedParts[det.partNum]) {
+        if (markedIndices.has(idx)) {
           // Dimmed green + checkmark once marked
           ctx.globalAlpha = 0.45;
           ctx.strokeStyle = '#27ae60';
@@ -404,10 +404,10 @@ function ScanResultPanel({
           ctx.fillStyle = '#fff';
           ctx.fillText(label, lx + 4, ly + th - 4);
         }
-      }
+      });
     };
     img.src = imageUrl;
-  }, [imageUrl, detections, markedParts]);
+  }, [imageUrl, detections, markedIndices]);
 
   useEffect(() => {
     if (!scanning) draw();
@@ -421,8 +421,9 @@ function ScanResultPanel({
     const px = (e.clientX - rect.left) * (canvas.width / rect.width);
     const py = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    for (const det of matching) {
-      if (markedParts[det.partNum]) continue;
+    for (let idx = 0; idx < matching.length; idx++) {
+      const det = matching[idx];
+      if (markedIndices.has(idx)) continue;
       const { left, upper, right, lower, imageWidth, imageHeight } = det.boundingBox;
       const sx = imageWidth > 0 ? canvas.width / imageWidth : 1;
       const sy = imageHeight > 0 ? canvas.height / imageHeight : 1;
@@ -433,11 +434,11 @@ function ScanResultPanel({
       const tol = Math.max(12, bw * 0.15);
       if (px >= bx - tol && px <= bx + bw + tol && py >= by - tol && py <= by + bh + tol) {
         // Optimistic mark — revert if API fails
-        setMarkedParts((prev) => ({ ...prev, [det.partNum]: true }));
+        setMarkedIndices((prev) => new Set([...prev, idx]));
         try {
           await onMarkFound(det.partNum);
         } catch {
-          setMarkedParts((prev) => { const n = { ...prev }; delete n[det.partNum]; return n; });
+          setMarkedIndices((prev) => { const n = new Set(prev); n.delete(idx); return n; });
         }
         break;
       }
@@ -451,7 +452,7 @@ function ScanResultPanel({
           {scanning
             ? 'Scanning…'
             : matching.length > 0
-            ? `${matching.length} piece(s) found — tap to mark`
+            ? `${matching.length - markedIndices.size} of ${matching.length} piece(s) left to mark`
             : 'Scan result'}
         </span>
         <button className={styles.scanDismiss} onClick={onDismiss}>✕</button>
