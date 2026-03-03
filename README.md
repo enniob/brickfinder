@@ -14,9 +14,9 @@ Each scan detects a single piece and waits for your confirmation, keeping you in
 
 ## Screenshots
 
-| Home | Missing parts |
-|------|--------------|
-| ![Home screen showing set list](demo/Screenshot%202026-03-02%20160022.png) | ![Session screen showing missing parts](demo/Screenshot%202026-03-02%20160036.png) |
+| Home | Missing parts | Found parts |
+|------|--------------|-------------|
+| ![Home screen showing set list](demo/Screenshot%202026-03-02%20160022.png) | ![Session screen showing missing parts](demo/Screenshot%202026-03-02%20160036.png) | ![Session screen showing found parts](demo/Screenshot%202026-03-03%20130104.png) |
 
 ## Tech stack
 
